@@ -14,7 +14,8 @@ const sendTokenResponse = (user, statusCode, res) => {
     expires: new Date(Date.now() + cookieExpireDays * 24 * 60 * 60 * 1000), 
     httpOnly: true, // Prevents client-side JS from accessing the cookie
     secure: process.env.NODE_ENV === 'production', // Only send over HTTPS in production
-    sameSite: 'Lax', // Protects against CSRF attacks (e.g., 'Strict', 'Lax', 'None')
+    sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax', // 'None' for cross-site requests in production
+    domain: process.env.NODE_ENV === 'production' ? undefined : undefined, // Don't set domain for same-site
   };
 
   // If you're running on localhost with http, secure: true will prevent cookie from being set.
@@ -112,22 +113,15 @@ exports.login = async (req, res, next) => {
 // @route   GET /api/auth/logout
 // @access  Private
 exports.logout = (req, res) => {
-  res.cookie('token', 'none', {
+  // Cross-site cookie settings for logout
+  const logoutOptions = {
     expires: new Date(Date.now() + 10 * 1000), // Expire quickly (10 seconds)
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'Lax',
-  });
+    sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax', // 'None' for cross-site requests in production
+  };
 
-  // Temporarily set secure to false for development if not using HTTPS locally.
-  if (process.env.NODE_ENV === 'development') {
-    res.cookie('token', 'none', {
-      expires: new Date(Date.now() + 10 * 1000),
-      httpOnly: true,
-      secure: false, // For local HTTP development
-      sameSite: 'Lax',
-    });
-  }
+  res.cookie('token', 'none', logoutOptions);
 
   res.status(200).json({ success: true, message: 'Logged out successfully' });
 };
