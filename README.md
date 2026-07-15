@@ -23,9 +23,23 @@ This is the backend API for the Symptra Health Admin Panel, built with Node.js, 
    ```
 4. Copy `.env.example` to `.env` and update the variables
 5. Start the development server:
-   ```
+   ```bash
    npm run dev
    ```
+
+## Render deployment
+
+Use `npm ci` as the build command and `npm start` as the start command. Configure
+`MONGO_URI`, `JWT_SECRET`, `GEMINI_API_KEY`, and `FRONTEND_URL` in the Render
+service environment. `FRONTEND_URL` must exactly match the deployed frontend
+origin (for example, `https://symptra-health-frontend.vercel.app`).
+
+The service exposes two health endpoints:
+
+- `GET /health/live` confirms that the HTTP process is running. Use this as the
+  Render health check path.
+- `GET /health/ready` returns `200` only when MongoDB is connected, otherwise
+  `503`.
 
 ## API Endpoints
 

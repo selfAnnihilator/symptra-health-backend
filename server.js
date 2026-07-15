@@ -14,6 +14,9 @@ const faqRoutes = require('./routes/faq.routes'); // IMPORT THIS
 dotenv.config();
 
 const app = express();
+const mongoRetryDelayMs = Number(process.env.MONGO_RETRY_DELAY_MS) || 10000;
+const mongoSelectionTimeoutMs = Number(process.env.MONGO_SERVER_SELECTION_TIMEOUT_MS) || 5000;
+let mongoRetryTimer;
 
 app.use(cors({
   origin: [
@@ -39,14 +42,69 @@ app.use((req, res, next) => {
   next();
 });
 
-mongoose.connect(process.env.MONGO_URI, {
-  dbName: 'symptrahealth'
-})
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => {
-    console.error('MongoDB connection error:', err);
-    process.exit(1);
+const scheduleMongoReconnect = () => {
+  if (mongoRetryTimer) {
+    return;
+  }
+
+  mongoRetryTimer = setTimeout(() => {
+    mongoRetryTimer = undefined;
+    connectToMongoDB();
+  }, mongoRetryDelayMs);
+  mongoRetryTimer.unref();
+};
+
+const connectToMongoDB = async () => {
+  if (!process.env.MONGO_URI) {
+    console.error('MongoDB unavailable: MONGO_URI is not configured.');
+    return;
+  }
+
+  try {
+    await mongoose.connect(process.env.MONGO_URI, {
+      dbName: 'symptrahealth',
+      serverSelectionTimeoutMS: mongoSelectionTimeoutMs,
+    });
+    console.log('Connected to MongoDB');
+  } catch (error) {
+    console.error('MongoDB connection error:', error.message);
+    scheduleMongoReconnect();
+  }
+};
+
+mongoose.connection.on('disconnected', scheduleMongoReconnect);
+connectToMongoDB();
+
+app.get('/health/live', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
+app.get('/health/ready', (req, res) => {
+  const databaseReady = mongoose.connection.readyState === 1;
+  res.status(databaseReady ? 200 : 503).json({
+    status: databaseReady ? 'ready' : 'not_ready',
+    database: databaseReady ? 'connected' : 'disconnected',
   });
+});
+
+app.get('/', (req, res) => {
+  res.status(200).json({
+    activeStatus: true,
+    error: false,
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+  });
+});
+
+app.use('/api', (req, res, next) => {
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(503).json({
+      success: false,
+      message: 'Service temporarily unavailable while the database reconnects.',
+    });
+  }
+
+  next();
+});
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -56,13 +114,6 @@ app.use('/api/requests', requestRoutes);
 app.use('/api/orders', orderRoutes); // ADD THIS ROUTE
 app.use('/api/analysis', analysisRoutes); // ADD THIS ROUTE
 app.use('/api/faqs', faqRoutes); // ADD THIS ROUTE
-
-app.get('/', (req, res) => {
-  res.send({
-    activeStatus:true,
-    error:false,
-  })
-})
 
 app.use((err, req, res, next) => {
   const statusCode = err.statusCode || 500;
@@ -76,8 +127,8 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${server.address().port}`);
 });
 
 module.exports = app;
