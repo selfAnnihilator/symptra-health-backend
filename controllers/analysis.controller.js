@@ -1,7 +1,7 @@
 const pdf = require('pdf-parse');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 const dotenv = require('dotenv');
 const MedicalReport = require('../models/medicalReport.model');
+const { generateText } = require('../services/gemini.service');
 
 dotenv.config();
 
@@ -10,12 +10,6 @@ dotenv.config();
 // @access Private
 exports.analyzeReportFromFile = async (req, res, next) => {
   try {
-    if (!process.env.GEMINI_API_KEY) {
-      const error = new Error('Medical report analysis is temporarily unavailable.');
-      error.statusCode = 503;
-      throw error;
-    }
-
     if (!req.file && !req.body.reportText) {
       return res.status(400).json({ success: false, message: 'No file or text provided.' });
     }
@@ -54,16 +48,7 @@ Summary of Findings:
 Potential Implications:
 Suggested Follow-up:`;
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-    const chat = model.startChat({
-      history: [],
-      generationConfig: { maxOutputTokens: 1000 },
-    });
-
-    const result = await chat.sendMessage(userPrompt);
-    const response = await result.response;
-    const aiAnalysisText = response.text();
+    const aiAnalysisText = await generateText(userPrompt);
 
     const newMedicalReport = new MedicalReport({
       user: req.user.id,
@@ -116,4 +101,3 @@ exports.deleteMedicalReport = async (req, res, next) => {
     next(error);
   }
 };
-

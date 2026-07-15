@@ -10,6 +10,7 @@ const articleRoutes = require('./routes/article.routes');
 const requestRoutes = require('./routes/request.routes');
 const orderRoutes = require('./routes/order.routes'); // IMPORT THIS
 const analysisRoutes = require('./routes/analysis.routes'); // IMPORT THIS
+const aiRoutes = require('./routes/ai.routes');
 const faqRoutes = require('./routes/faq.routes'); // IMPORT THIS
 dotenv.config();
 
@@ -113,6 +114,7 @@ app.use('/api/articles', articleRoutes);
 app.use('/api/requests', requestRoutes);
 app.use('/api/orders', orderRoutes); // ADD THIS ROUTE
 app.use('/api/analysis', analysisRoutes); // ADD THIS ROUTE
+app.use('/api/ai', aiRoutes);
 app.use('/api/faqs', faqRoutes); // ADD THIS ROUTE
 
 app.use((err, req, res, next) => {
