@@ -30,7 +30,7 @@ This is the backend API for the Symptra Health Admin Panel, built with Node.js, 
 ## Render deployment
 
 Use `npm ci` as the build command and `npm start` as the start command. Configure
-`MONGO_URI`, `JWT_SECRET`, `GEMINI_API_KEY`, and `FRONTEND_URL` in the Render
+`MONGO_URI`, `JWT_SECRET`, `GEMINI_API_KEY`, `GEMINI_MODEL`, and `FRONTEND_URL` in the Render
 service environment. `FRONTEND_URL` must exactly match the deployed frontend
 origin (for example, `https://symptra-health-frontend.vercel.app`).
 

@@ -13,11 +13,16 @@ const toPublicGeminiError = (error) => {
     return createServiceError('AI service is not configured with a valid API key.', 503);
   }
 
+  if (/\b429\b|RESOURCE_EXHAUSTED|quota exceeded/i.test(providerMessage)) {
+    return createServiceError('AI service quota exceeded. Please try again later.', 429);
+  }
+
   return createServiceError('AI service is temporarily unavailable. Please try again later.', 502);
 };
 
 const createGeminiService = ({
   apiKey = process.env.GEMINI_API_KEY,
+  modelName = process.env.GEMINI_MODEL || 'gemini-3.5-flash',
   GoogleGenerativeAIClass = GoogleGenerativeAI,
 } = {}) => ({
   async generateText(contents) {
@@ -27,7 +32,7 @@ const createGeminiService = ({
 
     try {
       const genAI = new GoogleGenerativeAIClass(apiKey);
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+      const model = genAI.getGenerativeModel({ model: modelName });
       const request = typeof contents === 'string'
         ? contents
         : { contents, generationConfig: { maxOutputTokens: 1000 } };
